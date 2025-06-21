@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Galerie avec Firebase</title>
+  <script>
+    UPLOADCARE_PUBLIC_KEY = 'e43d4190201ade256f76'; // Remplace par ta clé Uploadcare
+  </script>
+  <script src="https://ucarecdn.com/libs/widget/3.x/uploadcare.full.min.js"></script>
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+    // 🔧 CONFIG FIREBASE – remplace par ta propre config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAc2YtGlFZ7IrBSo6vhPXH8PWMs6w4rQao",
+      authDomain: "tattoo-challenge-cd4aa.firebaseapp.com",
+      projectId: "tattoo-challenge-cd4aa",
+      storageBucket: "tattoo-challenge-cd4aa.firebasestorage.app",
+      messagingSenderId: "521181680134",
+      appId: "1:521181680134:web:095c59d3d16bf783b8e987"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const galleryRef = collection(db, "gallery");
+
+    let uploadedImageURL = null;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const uploader = uploadcare.Widget('#uploader');
+
+      uploader.onUploadComplete(info => {
+        uploadedImageURL = info.cdnUrl;
+      });
+
+      document.getElementById("sendBtn").addEventListener("click", async () => {
+        const desc = document.getElementById("description").value.trim();
+
+        if (!uploadedImageURL) {
+          alert("Veuillez d'abord uploader une image.");
+          return;
+        }
+
+        await addDoc(galleryRef, {
+          imageUrl: uploadedImageURL,
+          description: desc || "Aucune description",
+          createdAt: new Date()
+        });
+
+        // reset
+        document.getElementById("description").value = '';
+        uploadedImageURL = null;
+        uploader.value(null); // reset Uploadcare widget
+      });
+
+      // Rechargement automatique de la galerie
+      const q = query(galleryRef, orderBy("createdAt", "desc"));
+      onSnapshot(q, snapshot => {
+        const gallery = document.getElementById("gallery");
+        gallery.innerHTML = '';
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "gallery-item";
+          div.innerHTML = `
+            <img src="${data.imageUrl}" alt="image">
+            <div class="desc">${data.description}</div>
+          `;
+          gallery.appendChild(div);
+        });
+      });
+    });
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f4f4f4;
+    }
+    .upload-form {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      display: inline-block;
+    }
+    input[type="text"] {
+      padding: 10px;
+      width: 300px;
+      margin-top: 10px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+    .gallery-item {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 200px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    }
+    .gallery-item img {
+      width: 100%;
+      border-radius: 4px;
+    }
+    .desc {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Galerie Photo (Upload + Firebase)</h1>
+
+  <div class="upload-form">
+    <input type="hidden" role="uploadcare-uploader" id="uploader" data-images-only />
+    <br>
+    <input type="text" id="description" placeholder="Entrez une description...">
+    <br>
+    <button id="sendBtn">Envoyer</button>
+  </div>
+
+  <h2>Galerie</h2>
+  <div class="gallery" id="gallery"></div>
+
+</body>
+</html>
